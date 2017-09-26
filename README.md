@@ -1,3 +1,3 @@
-## datavisualization project -Airbnb data
+## DataVisualization Project -Airbnb data
 
-### project is based on Rggplot2 package
+### Project is based on Rggplot2 package
