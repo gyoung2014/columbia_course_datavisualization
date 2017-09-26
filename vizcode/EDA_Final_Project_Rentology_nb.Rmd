@@ -1,0 +1,694 @@
+---
+html_document:
+title: "Visualize Airbnb Rentals 
+        in New York City and Los Angeles "
+student: Yang  Gao (yg2499)
+         Haobo Ma  (hm2690)  
+         Xin   Liu (xl2622) 
+output: 
+  html_notebook: 
+    number_sections: false
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+#### Group Name: Rentology
+#### Project Title: Airbnb Data Visualization in New York City and Los Angeles
+#### Student Name:
+Yang Gao (yg2499), Haobo Ma (hm2690), Xin Liu (xl2622) 
+
+##Introduction
+
+  Airbnb is a community-based online platform providing vacation rentals, short rentals along with many other types of rentals all around the world. It is a great choice to find great place to live in and live like a local person. It connects hosts and travelers, facilitating the process of renting without huge expenses but with conveniences. Moreover, it cultivates a sharing-economy by allowing property owners to rent out private properties to benefit the whole community.   
+  Airbnb was founded in 2008 and now is estimated around 25.5 billion USD, which is among the top unicorns in tech world. With such an overwhelmingly popular website,  we would like to dig in its datasets and explore what kind of patterns will appear on the visualization. The project is more than likely to provide an insight on what interesting findings will show in the listing prices the review scores, and rental availabilities, etc. In sharing-economy business model, this insight will shed light on future exploration in user preference, which is undoubtedly highly valuable to the firm.   
+  There are several interesting questions to be answered in the project as follows. Firstly, we will check the missing values in datasets we found. This will enable us to figure out the quality of our data. Next, we want to explore the distributions of rental prices according to their cities, their neighborhoods, and their room types. Then we would like to see how minimum nights requirments, cancelation policy are distributed in different types of rooms. Also, we would like to see what availabilities are like in different cities.  This may shed light on something people did not notice before, especially in metropolitans as we selected. Moreover, we would like to explore in depth how many listing residence controlled by the same host. This may enlighten us on if there exists a  group of people depending on rentals of Airbnb. If so, how large the number will be. Lastly, we want to know what factors are contributing to the review score ratings.
+
+  We get the data from [InsideAirbnb](http://insideairbnb.com/get-the-data.html). We would like to select some big cities such as New York City and Los Angeles in United States for this project. Original datasets were compiled by on March 2nd 2017, containing listings which provides summary information and metrics for listings. All listing files saved as csv format. After printing some samples in the original datasets, we think that this website seems to provide quite new datasets and keeps an original touch of data.  
+  The raw listing datasets contain 95 variables and have different data types. The datasets record information about hosts and their rental listings, which is mostly likely to be scraped from Airbnb website directly (Airbnb does not release official datasets, though there are a plenty of unofficial data sources). The raw dataset includes host information such as host id, rental listing description, neighbourhood, property type, room type, minimum nights to stay, cancelation policy, review scores, price, etc.  
+  You can easily download the dataset from the website listed in the previous paragraph. For each city, you can click button to see more dataset showing.
+
+##Team Members Description
+
+  All of us will take care of data cleaning step, transferring raw dataset into tidy dataset. We discuss about the varibales we need and work together to do the tidying. Once all data cleaning work is complete, we will move to create visualizzation plots.  
+  For visualization, Parallel Coordinate Plot and Mosaic are for Xin Liu. Heatmap (based on geographic dimensions),Bar Charts,Histogram.We will work on different cities individually.
+
+  In the report writing, each of us will be responsible for own visualizations in the main analysis. We will integrate our findings and visualization graphics together. We work together on Introduction and limitations in conclusion. Yang and Haobo are also working on data quality and Xin is for executive summary and conclusion. Finally, we work together to finalize the report.
+
+##Analysis of Data Quality
+```{r, warning=FALSE,message=FALSE}
+library(ggmap)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+packageVersion('plotly')
+library(gridExtra)
+library(GGally)
+library(tm)
+library(wordcloud)
+library(extracat)
+library(ggmosaic)
+library(mi)
+```
+###Load Datasets
+```{r, warning=FALSE,message=FALSE}
+#setwd("/Users/gaoyang/Desktop/final")
+list0317_ny <- read.csv("listings-raw0317nyc.csv",
+                     header = TRUE)
+list0317_la <- read.csv("listings-raw0317la.csv",
+                     header = TRUE)
+list0317_ny$city_name <- "New York City"
+list0317_la$city_name <- "Los Angeles"
+
+
+#stack raw datasets(stack vertically)
+airbnb_total <- rbind(list0317_ny, list0317_la)
+airbnb_total$count <-1
+airbnb_total$price <- as.numeric(gsub("\\$", "", airbnb_total$price))
+airbnb_total_2 <- subset(airbnb_total,select = c(host_since,count,city_name))
+```
+
+###Missing Data Analysis
+  The whole datasets have many different data types, and have more than 50% values in categorical data. We want to check how missing values are spread in this dataset. Then we choose twp different methods. First is to load the extracat library and use the visna function to uncover all the combinations that have missing values. Second is the to load the mi package and use the image function to plot the heatmap of the missing values. We begin with selecting the useful variables which are probably to be used for further anaysis from the original dataset, from both NYC and LA datasets. The details are shown in the following plots:
+
+```{r,fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+compareNA <- function(v1,v2) {
+    # This function returns TRUE wherever elements are the same, including NA's,
+    # and false everywhere else.
+    same <- (v1 == v2)  |  (is.na(v1) & is.na(v2))
+    same[is.na(same)] <- FALSE
+    return(same)
+   }
+
+missingdata_ny <- list0317_ny[1:1000,c(1,5:8,10:15,20,22,23,25,26,29,35,37,
+                                  40,41,49,50,52,53,61,68,75,77,80,91,95,96)] 
+missingdata_la <- list0317_la[1:1000,c(1,5:8,10:15,20,22,23,25,26,29,35,37,
+                                  40,41,49,50,52,53,61,68,75,77,80,91,95,96)] 
+
+#New York City missing data
+missingdata_ny_1 <- missingdata_ny 
+is.na(missingdata_ny_1) <- missingdata_ny_1 =='' #change blank cells into NA
+is.na(missingdata_ny_1) <- missingdata_ny_1 =='NA' #NA
+visna(missingdata_ny_1, sort = "b",sort.method = "count", fr=50, pmax = 0.05,s =2)
+image(missing_data.frame(missingdata_ny_1))
+
+#Los Angeles missing data
+missingdata_la_1 <- missingdata_la
+is.na(missingdata_la_1) <- missingdata_la_1 =='' #change blank cells into NA
+is.na(missingdata_la_1) <- missingdata_la_1 =='NA' #NA
+visna(missingdata_la_1, sort = "b",sort.method = "count", fr=50,pmax = 0.05,s =2)
+image(missing_data.frame(missingdata_la_1))
+```
+
+In addition to the missing values, we also find that there are several columns full of strings/words. We choose to implement text mining technics on those columns along with `WordCloud` to explore more analytical analysis on customers behavior. We will inlcude more details in `Executive Summary` session.
+
+Overall, the data quality seems good for our research and analysis purposes.   
+
+
+##Executive Summary 
+
+###Time Series Plot of Airbnb Host Register in New York City vs Los Angeles
+```{r, warning=FALSE,message=FALSE}
+#time series plot
+#plot 1
+airbnb_total_2 <- subset(airbnb_total,select = c(host_since,count,city_name))
+h1 <- airbnb_total_2 %>% 
+  select(host_since,count,city_name) %>%
+  group_by(host_since,city_name) %>%
+  summarise(Total_Count =sum(count,na.rm=TRUE)) 
+
+h2 <- subset(h1,host_since !="") #remove missing value
+h2$date <- format(as.Date(h2$host_since), "%m/%Y")
+h2$year <- gsub(".*/","",h2$date)
+
+# change categorical variable
+h2$quar[h2$date %in% c('03/2008')] <- "2008 Q1"
+h2$quar[h2$date %in% c('04/2008','05/2008','06/2008')] <- "2008 Q2"
+h2$quar[h2$date %in% c('07/2008','08/2008','09/2008')] <- "2008 Q3"
+h2$quar[h2$date %in% c('10/2008','11/2008','12/2008')] <- "2008 Q4"
+
+h2$quar[h2$date %in% c('01/2009','02/2009','03/2009')] <- "2009 Q1"
+h2$quar[h2$date %in% c('04/2009','05/2009','06/2009')] <- "2009 Q2"
+h2$quar[h2$date %in% c('07/2009','08/2009','09/2009')] <- "2009 Q3"
+h2$quar[h2$date %in% c('10/2009','11/2009','12/2009')] <- "2009 Q4"
+
+h2$quar[h2$date %in% c('01/2010','02/2010','03/2010')] <- "2010 Q1"
+h2$quar[h2$date %in% c('04/2010','05/2010','06/2010')] <- "2010 Q2"
+h2$quar[h2$date %in% c('07/2010','08/2010','09/2010')] <- "2010 Q3"
+h2$quar[h2$date %in% c('10/2010','11/2010','12/2010')] <- "2010 Q4"
+
+h2$quar[h2$date %in% c('01/2011','02/2011','03/2011')] <- "2011 Q1"
+h2$quar[h2$date %in% c('04/2011','05/2011','06/2011')] <- "2011 Q2"
+h2$quar[h2$date %in% c('07/2011','08/2011','09/2011')] <- "2011 Q3"
+h2$quar[h2$date %in% c('10/2011','11/2011','12/2011')] <- "2011 Q4"
+
+h2$quar[h2$date %in% c('01/2012','02/2012','03/2012')] <- "2012 Q1"
+h2$quar[h2$date %in% c('04/2012','05/2012','06/2012')] <- "2012 Q2"
+h2$quar[h2$date %in% c('07/2012','08/2012','09/2012')] <- "2012 Q3"
+h2$quar[h2$date %in% c('10/2012','11/2012','12/2012')] <- "2012 Q4"
+
+h2$quar[h2$date %in% c('01/2013','02/2013','03/2013')] <- "2013 Q1"
+h2$quar[h2$date %in% c('04/2013','05/2013','06/2013')] <- "2013 Q2"
+h2$quar[h2$date %in% c('07/2013','08/2013','09/2013')] <- "2013 Q3"
+h2$quar[h2$date %in% c('10/2013','11/2013','12/2013')] <- "2013 Q4"
+
+h2$quar[h2$date %in% c('01/2014','02/2014','03/2014')] <- "2014 Q1"
+h2$quar[h2$date %in% c('04/2014','05/2014','06/2014')] <- "2014 Q2"
+h2$quar[h2$date %in% c('07/2014','08/2014','09/2014')] <- "2014 Q3"
+h2$quar[h2$date %in% c('10/2014','11/2014','12/2014')] <- "2014 Q4"
+
+h2$quar[h2$date %in% c('01/2015','02/2015','03/2015')] <- "2015 Q1"
+h2$quar[h2$date %in% c('04/2015','05/2015','06/2015')] <- "2015 Q2"
+h2$quar[h2$date %in% c('07/2015','08/2015','09/2015')] <- "2015 Q3"
+h2$quar[h2$date %in% c('10/2015','11/2015','12/2015')] <- "2015 Q4"
+
+h2$quar[h2$date %in% c('01/2016','02/2016','03/2016')] <- "2016 Q1"
+h2$quar[h2$date %in% c('04/2016','05/2016','06/2016')] <- "2016 Q2"
+h2$quar[h2$date %in% c('07/2016','08/2016','09/2016')] <- "2016 Q3"
+h2$quar[h2$date %in% c('10/2016','11/2016','12/2016')] <- "2016 Q4"
+
+h2$quar[h2$date %in% c('01/2017','02/2017','03/2017')] <- "2017 Q1"
+
+h3 <- h2 %>% 
+  select(quar,Total_Count,city_name) %>%
+  group_by(quar,city_name) %>%
+  summarise(Count =sum(Total_Count,na.rm=TRUE)) 
+
+head(h3,10)
+```
+
+```{r,fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+ggplot(subset(h3,quar !="2017 Q1"), aes(quar, Count,group =2,color =city_name)) + 
+  geom_line(aes(group =city_name), size =2) +
+  xlab("Quarter (Year)") +
+  theme(axis.text.x = element_text(size=8, angle =40, hjust = 1)) +
+  ggtitle("Airbnb Host Register in New York City VS Los Angeles (2008 - 2016)") +
+       theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(data=subset(h3,quar !="2017 Q1")[c(33,34,41,42,49,50,57,58,65,66,73,74),], label="Q1",vjust =1, size =4)
+
+
+```
+  
+  As mentioned in the introduction, Airbnb is booming in recent years and attracting more and more new users all around the world. So the first plot presented here is the time series curve for new registers in New York City and Los Angeles from 2008(founded) to 2016. The X axis is measured in quarters and you can easily see the trend is growing rapidly starting from 2010 Q1. Though there are clear downfalls in 2012 Q1, 2013 Q1, 2014 Q1 and 2015 Q1, especially in 2014, the general trend is yet undoubtedly an increasing one.    
+  The very intriguing fingding is decreasing patterin for Q1, as marked in plot. The pattern may be answered by more professional business insiders. Q1 might be a bad quarter for business in general or so. Now what we care more is that the very steep fall in Los Angeles 2016 Q4. The drop is so large that we nearly suspect that data is somehow wrong in this quarter. However, we found this news: [link](http://www.laweekly.com/news/la-is-poised-to-enact-strict-airbnb-regulations-7056105)
+  'L.A. Is Poised to Enact Strict Airbnb Regulations', the strict regulations may explain why Airbnb is experiencing a fierce winter in Los Angeles. So now, we have already learned a basic idea about Airbnb.
+  
+###Boxplot of Airbnb Rental Price in New York City vs Los Angeles
+
+```{r,fig.width=9, fig.height=8, warning=FALSE,message=FALSE}
+#boxplot NYC vs LA
+#plot 2
+airbnb_total_3 <- subset(airbnb_total, price <= 500)
+ggplot(subset(airbnb_total_3), aes(x=room_type, y=price, fill=city_name)) +
+  geom_boxplot() +
+  xlab("Room Type") +
+  ylab("Price in Dollars (USD)") +
+  ggtitle("Price By Room Type in New York City Vs Los Angeles") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+  After checking the new registers for Airbnb, we then look closer at how the prices distribute in New York City and Los Angeles. A multiple box-plot is exploited here. It utilized not only the price variable, but also the room types.  
+  We want to addres that we filter out all the listings that are higher than 500 dollars since they are obvious outliers in histogram, which will be mentioned in main analysis. To achieve a better visualizaiton of prices, we want to kepp the prices under 500. With after-filtering data, we construct this box-plot.  
+  The first impression is that prices in New York City is generally higher than those in Los Angeles. All three NY boxes are higher than LA ones. It shows that prices for each room type, NY is generally higher. Specifically, prices are almost the same for private room. For entire home/apt, NY box is clearly higher than LA, As for shared room, NY box is much higher than LA one. The distinction between room types are new findings.      
+  Next, we are not surprised to see that there are still a large amount of outliers in higher price level. But look at the details here. For shared rooms, the outliers are sparse. For private room, the outliers seems to become more. And both of them have relatively short whiskers. When it comes to entire home/apt, it has long whiskers and a lot of outliers. We can easily assume that entire home/apt are varing a lot in price and it gets the highest listing price in whole dataset. And it is reasonale finding that one entire home/apt can be very expensie in NYC/LA.
+  
+###Word Cloud Discovery
+  
+```{r, fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+#word count
+#plot 3
+
+#NYC word counts
+h2_ny <-subset(list0317_ny, select=c("summary","description","neighborhood_overview","notes","transit","price","access","interaction"))
+
+h2_ny_merge<- do.call(paste0, list0317_ny[c("summary","description","neighborhood_overview","notes","transit","price","access","interaction")])
+
+h2_ny_union=h2_ny_merge[sample(length(h2_ny_merge),6000)]
+
+docs_ny <- Corpus(VectorSource(h2_ny_union))
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs_ny <- tm_map(docs_ny, toSpace, "/")
+docs_ny <- tm_map(docs_ny, toSpace, "@")
+docs_ny <- tm_map(docs_ny, toSpace, "\\|")
+docs_ny <- tm_map(docs_ny, content_transformer(tolower))
+# Remove numbers
+docs_ny <- tm_map(docs_ny, removeNumbers)
+# Remove english common stopwords
+docs_ny <- tm_map(docs_ny, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs_ny <- tm_map(docs_ny, removeWords, c("blabla1", "blabla2")) 
+# Remove punctuations
+docs_ny <- tm_map(docs_ny, removePunctuation)
+# Eliminate extra white spaces
+docs_ny <- tm_map(docs_ny, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+dtm_ny <- TermDocumentMatrix(docs_ny)
+m_ny <- as.matrix(dtm_ny)
+v_ny <- sort(rowSums(m_ny),decreasing=TRUE)
+d_ny <- data.frame(word = names(v_ny),freq=v_ny)
+head(d_ny, 10)
+
+#LA word counts
+h2_la <-subset(list0317_la, select=c("summary","description","neighborhood_overview","notes","transit","price","access","interaction"))
+
+h2_la_merge<- do.call(paste0, list0317_la[c("summary","description","neighborhood_overview","notes","transit","price","access","interaction")])
+
+h2_la_union=h2_la_merge[sample(length(h2_la_merge),6000)]
+
+docs_la <- Corpus(VectorSource(h2_la_union))
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs_la <- tm_map(docs_la, toSpace, "/")
+docs_la <- tm_map(docs_la, toSpace, "@")
+docs_la <- tm_map(docs_la, toSpace, "\\|")
+docs_la <- tm_map(docs_la, content_transformer(tolower))
+# Remove numbers
+docs_la <- tm_map(docs_la, removeNumbers)
+# Remove english common stopwords
+docs_la <- tm_map(docs_la, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs_la <- tm_map(docs_la, removeWords, c("blabla1", "blabla2")) 
+# Remove punctuations
+docs_la <- tm_map(docs_la, removePunctuation)
+# Eliminate extra white spaces
+docs_la <- tm_map(docs_la, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+dtm_la <- TermDocumentMatrix(docs_la)
+m_la <- as.matrix(dtm_la)
+v_la <- sort(rowSums(m_la),decreasing=TRUE)
+d_la <- data.frame(word = names(v_la),freq=v_la)
+head(d_la, 10)
+
+set.seed(1234)
+par(mfrow=c(1,2))
+w1 <- wordcloud(words = d_ny$word, freq = d_ny$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2")) #NYC
+w2 <- wordcloud(words = d_la$word, freq = d_la$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2")) #LA
+```
+
+
+  This is an interesting visualizaiton when you want to know what the text content of listings will be about in Airbnb. It reflects what might be attractive to travallers, what respects are considered important when renting a place. However, due to the limited capability of local machine, we have to select 6000 samples from New York City and Los Angeles respectively. 
+  We count the appearance for each word in the following varibales: summary, description, neighborhood_overview, notes, transit, price, access, interaction. These are all text content variables. And the more counts a word gets, the larger it shows in visualizaiton.  
+  The result is very clear. When you put them together, you can tell which is NYC/LA with only one glance. The huge 'hollywood', 'beach' are identifying itself as Los Angeles. And also you can see 'Manhattan' in NYC visualization These two cities are very distinctive in the word count visualization.   
+  What's more to be noticed? Los Angeles one has 'house' and New York one has not. And you can imagine that the number of houses in Los Angeles may be more than that of New York City. 'Kitchen' shows in both visualizations and not a small one. It is surprising that people care about kitchen that much. Usually it is assumed that people will avoid cooking when they travel. But it seems not the truth.   
+
+
+##Main Analysis
+
+###Rental Listing Distribution Analysis  
+  In the first steo to explore Airbnb dataset deeply, we would like to look at how rental listing distributed in both New York City and Los Angeles.
+```{r, fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+#Airbnb Room Type Distribution in New York City
+qmplot(longitude, latitude, data = list0317_ny, maptype = "toner-background",
+       darken = 0.7,color = room_type,alpha =I(0.4),size = I(0.1)) +
+       guides(colour = guide_legend(override.aes = list(size=2))) +
+       ggtitle("Airbnb Room Type Distribution in New York City ") +
+       theme(plot.title = element_text(hjust = 0.5)) +
+       facet_wrap(~ room_type)
+```
+
+```{r, fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+
+#Airbnb Room Type Distribution in Los Angeles
+qmplot(longitude, latitude, data = list0317_la, maptype = "toner-background",
+       darken = 0.7, color = room_type,alpha =I(0.4),size = I(0.1)) +
+       guides(colour = guide_legend(override.aes = list(size=2))) +
+       ggtitle("Airbnb Room Type Distribution in Los Angeles") +
+       theme(plot.title = element_text(hjust = 0.5)) +
+       facet_wrap(~ room_type)
+
+```
+
+As we can clearly see in the plot,there are a lot of entire home/apt and private room locate in Manhattan,Downtown Brooklyn,and Queens.Also,it provides a lot of private room in Flushing,Queens and Staten Island.It shows that there have some entire home/apt and private room in Staten Island and Bronx,while there are few numbers of shared room locate in these areas,most of them locate in Manhattan and Downtown Brooklyn.
+
+Let's see how Los Angeles data looks like.A large amount of entire home/apt and private room locate nearby the beach,such as Santa Monica and Long Beach.Los Angeles people loves sunshine and beach! Also,there are a lot of entire home/apt and private room in DTLA,Pasadena and Glendora area.While most of shared room located in DTLA and Santa Monica.At the left side corner,it's called Santa Catalina Island.It provide a lot of entire home/apt and private room in this small island.
+
+###Price Comparison between New York City and Los Angeles
+
+We consider that most travelers concern price if it is expensive or cheap.So we conducted the histogram for price variable.As it shows in the plot,a large amount of rental listing price ranges from 10 to 350.The distribution of price looks like right skewed.There are a lot of outliers that price over 500 USD.So we built a density plot which compared with two cities New York City and Los Angeles.Based on density plot,the peak value for shared room price ranges from 10 to 50.While the peak value for private room price ranges from 50 to 100.And the peak value for entire room price ranges from 100 to 200.It provides you an option to choose a suitable room type that you would like to stay.All peak value moves right in New York City which compares with Los Angeles.That means the average price in New York is much higher than that in Los Angeles.
+
+```{r,fig.width=9, fig.height=5,  warning=FALSE,message=FALSE}
+# Price compare with NYC and LA.
+# Summarize Listing Price 
+summary(airbnb_total$price)
+
+ggplot(data=airbnb_total, aes(airbnb_total$price)) + 
+  geom_histogram(binwidth = 28,
+                 col ='black',
+                 fill="lightblue") + 
+  labs(title="Histogram for Listing Price") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x="Listing Price", y="Frequency")
+
+ggplot(airbnb_total_3, aes(price, colour = room_type)) +
+  geom_density(size=1, show.legend = FALSE) + 
+  stat_density(aes(x=price, colour=room_type), geom="line", position="identity" )  +
+  guides(colour = guide_legend(override.aes = list(size=2)))+
+  xlab("Price") +
+  ggtitle("Density Distribution of Price By Room Type") +
+       theme(plot.title = element_text(hjust = 0.5)) +
+  facet_wrap( ~city_name ,ncol= 1)
+
+ggplot(subset(airbnb_total_3,city_name =="New York City"), aes(x=neighbourhood_group_cleansed, y=price, fill=room_type)) +
+  geom_boxplot() +
+  xlab("District Area") +
+  ylab("Price in Dollars (USD)") +
+  ggtitle("Price By Room Type in Different Areas in New York City") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+So,we want to deeply look at the price based on type of room and district areas in both cities.Unfortunately,district area variable(neighbourhood_group_cleansed) is not available in Los Angeles,so we will only explore in New York City data.Accordning to the result of boxplot,price of entire home/apt is much expensive than the other two.Private room is the second expensive one.Shared room provides the cheapest price.As we can see,although we remove outliers that price over 500 USD,it still have a lot of outliers in the boxplot based on different room type and different district area.It shows that rooms in Manhattan is much expensive than other district.The median price of entire room/apt in Manhattan is around 180 USD.And the median price of private room in Manhattan is less 100 USD,around 80 USD.So if we want to save some money,we suggest that you can choose private room in Manhattan and look at other discrict area,such as Brooklyn and Queens.
+
+####Parallel Coordinate Plot of Various Price Levels
+```{r,fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+# PCP Plot 
+abn <- airbnb_total[airbnb_total$price <= 500 , ]
+quantile(abn$price, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+abn$security_deposit[abn$security_deposit==""] <- '0'
+abn$cleaning_fee[abn$cleaning_fee==""] <- '0'
+abn$security_deposit <- as.numeric(abn$security_deposit)
+abn$cleaning_fee <- as.numeric(abn$cleaning_fee)
+abn$security_deposit[is.na(abn$security_deposit)] <- 0
+abn$cleaning_fee[is.na(abn$cleaning_fee)] <- 0
+
+abn$extra_fee <- abn$security_deposit + abn$cleaning_fee
+pcp <- abn[abn$extra_fee > 0, ]
+pcp <-subset(pcp,select=c("price","city_name","room_type","host_response_time","review_scores_rating","extra_fee"))
+nrow(pcp)
+pcp$priceLevel <- '0 - 25%'
+pcp$priceLevel[pcp$price>=69] <- '25% - 50%'
+pcp$priceLevel[pcp$price>=100] <- '50% - 75%'
+pcp$priceLevel[pcp$price > 160] <- '75% and above'
+
+pcp_sample <-pcp[sample(1:nrow(pcp), 25000, replace=FALSE),]
+
+ggparcoord(pcp_sample, columns = 2:6 , groupColumn = 'priceLevel', scale = 'uniminmax', title = "Parallel Coordinate Plot for Price Level (sample size = 25000)") +
+  geom_line(size=1.25) +
+  labs(y="")+
+  theme(axis.text.x=element_text(angle=5, hjust=1), axis.ticks.y = element_blank() )
+
+```
+  Parallel coordinate plot is ideal for showing how one single variable is changing in coordination with a a series of varibales. Here, the single variable is price level and the variables we want to look at are cities, room types, host response time, review score ratings, and extra fee.  
+  Extra fee is not a variable from original dataset. It is a sum of security deposit and cleaning fee if either of it exists. We want to createt this label since we believe that rent price might be correlated with the extra amount of money. In real life, one can easily assume that, the better an accommodation is. the higher price it takes. When you visit a luxury hotel, you are more likely to pay higher security deposit and cleaning fee after staying. That is why we create this variable to check if it is correlated with rent price.  
+  When plotting PCP, the large amount of data cannot be handled by our local machine. So it is better to take a sample to do plotting. The size 25000 is nearly the maximum which local machine is capable of. One thing need to be noticed is that we exclude samples whose extra fee equaling to zero. It is better to check the correlation between extra fee and rent price. And the total size of data with extra fee being larger than zero is more than 40000. It is very reasonable to take a sample from that large size.  
+  Looking at this PCP, the first three variables are discreate ones. We can easily see that 0 - 25% are very active in these three variables. So we know 0 - 25% have large spreat in cities, room types, and host response time. In last two variables, two points need to be noticed. One is that purple line appears more in top, which means high price correlates with high ratings and more extra fee. There seems to be some outliers in high extra fee. These high extra fee are more likely to be 75% and above price level. The other point is that score rating is tend to higher. It might indicate that people like to give a good score to the hosts. More details on these variables will be in following parts. 
+  
+
+###Availablity Analaysis
+
+Let's look at `Availablity_365` variable.It shows the number of days the residence is available to renters by the host within 365 days span after the listing was posted.This is a factor to see whether these rental listing is under leave unused.First,we explore a summary to see this variable.The median value equals to 143 days,and mean value equals to 168.6 days.That means there are almost half a year the residence is under leave unused.So people would like to share their residence to other people if they need.Based on histogram,there are two peaks in the plot.A large amount of residence listing fall into 1-10 days and 355-365 days.Also,there are a lot available listing ranges from 10-100 days and 270 -365 days.So we tranform numerical variable into categorical variable with 4 levels(1-3 months,4-6 months,7-9 months,and 10-12 months).
+
+```{r, fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+# Availablity_365
+airbnb_total$availability_365 <- as.numeric(airbnb_total$availability_365)
+summary(airbnb_total$availability_365)
+
+ggplot(data=airbnb_total, aes(airbnb_total$availability_365)) + 
+  geom_histogram(binwidth = 10,
+                 col ='black',
+                 fill="lightblue") + 
+  labs(title="Histogram for Availability") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(x="Available Days", y="Frequency")
+
+# create Available_Quarter based on Availablity_365
+
+airbnb_total$available_quarter[airbnb_total$availability_365 <=91 &
+                              airbnb_total$availability_365 >=0] <- "1-3 Months"
+airbnb_total$available_quarter[airbnb_total$availability_365 <=181 &   
+                               airbnb_total$availability_365 >91] <- '4-6 Months'
+airbnb_total$available_quarter[airbnb_total$availability_365 <=271 &  
+                               airbnb_total$availability_365 >181] <- '7-9 Months'
+airbnb_total$available_quarter[airbnb_total$availability_365 <= 365&   
+                               airbnb_total$availability_365 >271] <- '10-12 Months'
+airbnb_total$available_quarter <- factor(airbnb_total$available_quarter)
+
+airbnb_total$available_quarter <- factor(airbnb_total$available_quarter, 
+                                        levels = c("1-3 Months", "4-6 Months", 
+                                                   "7-9 Months", "10-12 Months"))
+
+summary(airbnb_total$available_quarter)
+
+ggplot(airbnb_total, aes(availability_365, colour = room_type)) +
+  geom_density(size =1 , show.legend = FALSE) +
+  xlab("Available Days") +
+  ggtitle("Density Distribution of Availability ") +
+       theme(plot.title = element_text(hjust = 0.5)) + 
+  stat_density(aes(x=availability_365, colour=room_type), geom="line", position="identity" )  +
+  guides(colour = guide_legend(override.aes = list(size=2)))
+```
+  The histogram makes an interesting distribution in available days. Both the bars at the beginning and the end have extremely high counts, which means that there are a large percentage of hosts are either available for only a few days in a year or available almost for a whole year. Then we have an assumption that the hosts are not updating their availability on the website so they are recorded as available for 365 days. Then we try to eliminate the value of 365 and plot again. But the trend still keeps. Thus we think the original data may indicate that quite a percentage of hosts are doing Airbnb for a casual days and do not depend on the rent money while another large proportion of people are depending on it.  
+  The density shows how available days distributes in room types. We can see that shared room type does not keep the trend at the beginning bar. It appears that shared rooms are having more availability compared to others. Now we might imagine that shared rooms are more flexible than entire ones so it will have more availability. It is further validated by the fact that entire home/apt is going low at the end of density, which means there is less people are renting entire home/apt for a long period compared to other room types.
+
+```{r, fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+
+ggplot(airbnb_total, aes(available_quarter, fill=room_type)) + 
+  geom_bar(position = "dodge") +
+  xlab("Available Days")
+
+# NYC 
+ggplot(subset(airbnb_total,neighbourhood_group_cleansed !="NA"), aes(available_quarter, fill=neighbourhood_group_cleansed)) + 
+  geom_bar() +
+  xlab("Available Days")
+
+```
+
+ Entire room/apt has large numbers of available residence in 1-3 months, the 2nd largest number of available residence is in 10-12 months, then 4-6 months and 7-9 months.It didn't show much available residence for shared room in 4-6 monts and 7-9 months.
+Then we deeply explored available days in New York City,because it is not avaialble for Los Angeles with Neighbourhood cleased variable,so we will not discuss Los Angeles case at the moment.Within 1-3 months,Manhattan has the largest number of available residence,and 2nd largest is Brooklyn.So it's a good choice to select a short residence in Manhattan and Brooklyn.If someone wants to stay for a long time,over 10 months,Manhattan and Brooklyn is also a good place to choose.
+
+###Minimun Nights Requirement Analysis
+We also would like to check that whether those available residence have minimum stays requirement. We choose minimum nights variable to explore. Based on summary report,all rental listings require minimum 1 night stay.The median value equals to 2,and mean value equals to 3.7 nights.That means the average minimum  requires 4 nights to stay.Then we make a new categorical variable to transform numerical one.In new variable,there are 5 levels(1 nights,2-3 nights,4-5 nights,6-7 nights,and 7 more nights).
+
+```{r, fig.width=9, fig.height=5, warning=FALSE,message=FALSE}
+#minimun nights requirement
+summary(airbnb_total$minimum_nights)
+
+airbnb_total$cat_night[airbnb_total$minimum_nights ==1] <- "1 Night"
+airbnb_total$cat_night[airbnb_total$minimum_nights >1 & airbnb_total$minimum_nights <=3] <- "2-3 Nights"
+airbnb_total$cat_night[airbnb_total$minimum_nights >3 & airbnb_total$minimum_nights <=5] <- "4-5 Nights"
+airbnb_total$cat_night[airbnb_total$minimum_nights >5 & airbnb_total$minimum_nights <=7] <- "6-7 Nights"
+airbnb_total$cat_night[airbnb_total$minimum_nights >7 & airbnb_total$minimum_nights <=30] <- "7 Nights More"
+
+airbnb_total$price <- as.numeric(gsub("\\$", "", airbnb_total$price)) #remove $ sign
+
+table(airbnb_total$cat_night,airbnb_total$room_type)
+table(airbnb_total$cat_night)
+
+ggplot(subset(airbnb_total,cat_night !="NA"), aes(cat_night, fill =room_type)) + 
+  geom_bar() +
+  xlab("Minimum Nights(Days)") +
+  ggtitle("Minimum Nights by Room Type") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  facet_wrap(~ city_name) +
+  coord_flip()
+
+ggplot(subset(airbnb_total,price <=500 & city_name =='New York City' & cat_night !="NA"), aes(price, colour = cat_night)) +
+  geom_density(size = 1, show_guide = FALSE) +
+  xlab("Price") +
+  ggtitle("Density Distribution of Price By Minimum Nights in New York") +
+       theme(plot.title = element_text(hjust = 0.5))+ 
+  stat_density(aes(x=price, colour=cat_night), geom="line", position="identity" )  +
+  guides(colour = guide_legend(override.aes = list(size=2)))
+
+
+
+```
+In New York City,the largest number of minimum stays is 2-3 nights in New York City, while the largest number of minimum stays is 1 nights in Los Angeles.So New York City may have more strict booking policy than that in Los Angeles.We will explore this problem on further discussions.It seems that a large number of listings in private room has 1 nights minimum within both cities,while entire home/apt has larger number of listings in both cities for 2-3 nights minimum.
+
+Based on desity plot,price ranges from 10 to 100 USD,it provides more friendly minimum nights requirement for only 1 night.Price ranges from 100 to 300 USD,most rental listings require 2-3 nights minimum.While price over 300 USD,a lot of listings require 4-5 nights or more minimum stays.
+
+###Top Host Listings Analysis
+In order to represent, compare and analylize the top hosts in NYC and/v.s. LA, we choose to use The celevland dot plot to show the total host numbers in a descending order. `Alexander` from `LA` has the most total_count of 42 hosting and ranks at the first place. On the top 35 listings, over than 85% are from `LA`. It shows the consistantcy and professionism differences between NYC and LA in general. In short, `LA` top hosters are more reliable and professional to most renters.
+```{r,warning=FALSE,message=FALSE}
+# host_id 
+# which host has most rental listing? TOP 60 host ID in each city
+
+h4 <- airbnb_total %>% 
+  select(host_id,host_name,count,city_name) %>%
+  group_by(host_id,host_name,city_name) %>%
+  summarize(Total_Count =sum(count,na.rm=TRUE)) %>%
+  arrange(desc(Total_Count)) 
+
+# select top 30 in NYC
+h4_1 <- h4 %>%
+  filter(city_name =='New York City') %>%
+  head(30)
+
+# select top 30 in LA
+h4_2 <- h4 %>%
+  filter(city_name =='Los Angeles') %>%
+  head(30)
+
+h4_3 <- rbind(h4_1,h4_2)
+h4_4 <- h4_3 %>%
+  arrange(desc(Total_Count))
+  
+head(h4_4)
+```
+
+###Top 60 hosts in New York City and Los Angeles
+
+```{r, fig.height=8,fig.width=8, warning=FALSE,message=FALSE}
+
+ggplot(h4_4, aes(x= reorder(host_name,Total_Count),y=Total_Count,color=city_name)) + 
+  geom_point()+
+  xlab("Host ID") +
+  ggtitle("Top Hosts in New York City Vs Los Angeles") +
+       theme(plot.title = element_text(hjust = 0.5)) +
+  coord_flip()
+```
+
+####Top 50 Hosting in New York City
+```{r,fig.width=9, fig.height=5,  warning=FALSE,message=FALSE}
+#Top 50 Host ID NYC
+###################
+h4_1_1 <- h4 %>%
+  filter(city_name =='New York City') %>%
+  head(50)
+h4_1_2 <-subset(h4_1_1, select=c("host_id","host_name"))
+
+list0317_ny_2 <- list0317_ny
+list0317_ny_2$price <- as.numeric(gsub("\\$", "", list0317_ny_2$price)) #remove $ sign
+sub_merge <- subset(list0317_ny_2,select =c("host_id","neighbourhood_group_cleansed","latitude",
+               "longitude","property_type","room_type","price","minimum_nights","maximum_nights"))
+# LEFT JOIN
+h1_total <- merge(x = h4_1_2, y = sub_merge, by = "host_id", all.x = TRUE) # top 50 host ID NYC
+
+#check merge NYC
+table(h1_total$host_id)
+
+#Top 50 Host ID LA
+###################
+h4_1_1_la <- h4 %>%
+  filter(city_name =='Los Angeles') %>%
+  head(50)
+h4_1_2_la <-subset(h4_1_1_la, select=c("host_id","host_name"))
+
+list0317_la_2 <- list0317_la
+list0317_la_2$price <- as.numeric(gsub("\\$", "", list0317_la_2$price)) #remove $ sign
+sub_merge_la <- subset(list0317_la_2,select =c("host_id","neighbourhood_group_cleansed","latitude",
+               "longitude","property_type","room_type","price","minimum_nights","maximum_nights"))
+# LEFT JOIN
+h1_total_la <- merge(x = h4_1_2_la, y = sub_merge_la, by = "host_id", all.x = TRUE) # top 50 host ID LA
+
+#check merge LA
+table(h1_total_la$host_id)
+
+# 50 Host Listing in NYC
+g1 <- qmplot(longitude, latitude, data = h1_total, maptype = "toner-background",
+       darken = 0.6, color = room_type,alpha =I(0.4),size = I(0.6))+
+      guides(colour = guide_legend(override.aes = list(size=3))) +
+      ggtitle("Top 50 Host in New York") +
+      theme(legend.text=element_text(size=8))
+g2 <- qmplot(longitude, latitude, data = h1_total, maptype = "toner-background",
+       darken = 0.6, color = property_type,alpha =I(0.4),size = I(0.6)) +
+      guides(colour = guide_legend(override.aes = list(size=3))) +
+      ggtitle("Top 50 Host in New York")+
+      theme(legend.text=element_text(size=8))
+grid.arrange(g1,g2, nrow=1)
+```
+
+####Top 50 Hosting in Los Angeles
+
+```{r,fig.width=9, fig.height=5,  warning=FALSE,message=FALSE}
+
+# 50 Host Listing in LA
+g3 <- qmplot(longitude, latitude, data = h1_total_la, maptype = "toner-background",
+       darken = 0.6, color = room_type,alpha =I(0.4),size = I(0.6))+
+      guides(colour = guide_legend(override.aes = list(size=3))) +
+      ggtitle("Top 50 Host in Los Angeles") +
+      theme(legend.text=element_text(size=8))
+g4 <- qmplot(longitude, latitude, data = h1_total_la, maptype = "toner-background",
+       darken = 0.6, color = property_type,alpha =I(0.4),size = I(0.6)) +
+      guides(colour = guide_legend(override.aes = list(size=3))) +
+      ggtitle("Top 50 Host in Los Angeles")+
+      theme(legend.text=element_text(size=8))
+grid.arrange(g3,g4, nrow=1)
+
+```
+From the top 50 Host Listing plot in NYC, we can see that the most room type is `Private room` and the most property_type is `Apartment`; whereas in LA, the most room types are `Entire home/apt` and `Shared room`, and `House` and `Loft` are the two main property_types that are mostly determined by the areas. In addition, if it's located more close to `downtown` and `UCLA` area, we can also see some `Apartment` and `Condominium` point plots showing up. 
+
+####Facetting MOSAIC for superhost/verified host/neighborhood in NYC
+
+```{r, warning=FALSE,message=FALSE}
+#Facetting MOSAIC for superhost, verified, neighbprhood in NYC
+
+msc <- subset(list0317_ny,select = c(host_identity_verified, neighbourhood_group_cleansed,host_is_superhost ) )
+msc <- msc[msc$host_identity_verified!="",]
+levels(msc$host_identity_verified) <- c(levels(msc$host_identity_verified), "YES","NO")
+levels(msc$host_is_superhost) <- c(levels(msc$host_is_superhost), "Superhost","Not Superhost")
+
+msc$host_identity_verified[msc$host_identity_verified == "t"] <- "YES"
+msc$host_identity_verified[msc$host_identity_verified == "f"] <- "NO"
+msc$host_is_superhost[msc$host_is_superhost == "t"] <- "Superhost"
+msc$host_is_superhost[msc$host_is_superhost == "f"] <- "Not Superhost"
+
+mosaic <- ggplot(data = msc) +
+   geom_mosaic( aes( x = product(host_identity_verified, neighbourhood_group_cleansed), fill=factor(host_identity_verified)),  na.rm=TRUE) +     
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(), axis.ticks = element_blank()) +
+  labs(x="Neighborhoods", title='NYC verified hosts, superhosts Neighborhoods ')  +
+  facet_grid(host_is_superhost~.) + 
+  guides(fill=guide_legend(title = "Identity Verified") ) 
+
+```
+![](figmosaic.png)
+
+  This is a facetting mosaic plot comparing the number of hosts/verified hosts/superhosts in different neighborhoods in new york city.  
+  Firstly, we can look at how hosts is distributed in differnet neighborhoods. It is easily to see that Manhattan and Brooklyn have much larger amount of hosts than other neighborhoods. Staten Island is no doubt occupying the smallest part.   Next, we will look at the verified hosts and unverified hosts. Surprisingly, unverified hosts seem to have a larger percentage in Manhattan than in Brooklyn. And it is also notieable that unverified hosts are counting a rather large percentage in the total number of hosts. Usually the travellers will like to live in a more secure space so verification is an important factor when one is looking for accommodations. Such a large percentage of unverified hosts give us two guesses. One is that peole here are so concerned about their privacy that they do not want to be verified even just by Airbnb. The other one is that accommodations in new york city is so pricy that traveller will more than willingly to pay a lower price and leave the verification issue alone.  
+  Lastly, the superhosts. When we facet with superhost, it is not according to the percentage of superhost or not. In fact, the number of superhosts is much smaller than the one of not superhosts. But it is very reasonable since only the top hosts can be deemed as superhosts by Airbnb. For example, when you want to buy something on eBay, you will want to look at top rated sellers. If everyone is top rated seller, then the title is meaningless. One can easily notice that verified superhosts are covering a larger area compared to not superhosts facet. And one very important finding is that, Brooklyn seems to have more superhosts than Manhattan, which is genuinly unexpected. Maybe it is a proof of success in gentrification.
+
+### Review Score Rating Analysis 
+Another important metric for our data analysis is the `Review Score Rating`. We want to explore and see if there's any major factor that will make difference on the Review Score Rarting of the host listings. We selected `Number of Reviews`, `host_is_superhost` and `host_response_time` as another three variables to visulaize the relationship associated with `Review Score Rating`.
+
+#### Review Score Rating vs host_is_superhost 
+As we can see from the following scatter plot,  the more number of reviews the host can have, the more chances that the host will get higher Review score rating. In the mean time, if the host is a super host, the review score rating will be at least 80.
+
+```{r,fig.width=9, fig.height=5,  warning=FALSE,message=FALSE}
+# reviews
+# host_is_superhost 
+
+summary(airbnb_total$host_is_superhost)
+
+re_super <- subset(airbnb_total,host_is_superhost !="") #remove missing value
+
+ggplot(re_super, aes(number_of_reviews, review_scores_rating)) +
+  geom_point(aes(colour = factor(host_is_superhost)),alpha =0.6) +
+  xlab("Number of Reviews") +
+  ylab("Review Scores Rating") +
+  ggtitle(" Distribution of Review Scores Rating by Super Host ") +
+       theme(plot.title = element_text(hjust = 0.7)) +
+  facet_wrap( ~ host_is_superhost)
+
+```
+
+#### Review Score Rating vs host response time
+As we can see from the following desnsity plot, there are very few group of people are giving scores at 60 and 70. More groups of people starts to give scores at 80. Starting from 75, All of the density plots start to go up too. However, there's a big difference for the probabilities when people giving 100 at the end of the plot. We can see that people can certainly tolerant a response `within a day`. However, if it's beyond a day to repsond, the more probabily that the host will not have 100 score rating eventually.
+
+```{r, fig.width=9, fig.height=5,  warning=FALSE,message=FALSE}
+# host response time
+summary(airbnb_total$host_response_time)
+summary(airbnb_total$review_scores_rating)
+s <- subset(airbnb_total, host_response_time != 'N/A' & host_response_time !="")
+  
+ggplot(s, aes(review_scores_rating,colour = host_response_time)) +
+  geom_density(size=1, show_guide=FALSE) +
+  xlab("Review Scores Rating") +
+  xlim(55, 100) +
+  ggtitle("Distribution of Review Scores Rating by Response Time") +
+       theme(plot.title = element_text(hjust = 0.5)) + 
+  stat_density(aes(x=review_scores_rating, colour=host_response_time), geom="line", position="identity" )  +
+  guides(colour = guide_legend(override.aes = list(size=2)))
+       
+
+```
+
+## Conclusion
+
+## Limitation
