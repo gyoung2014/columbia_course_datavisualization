@@ -2,9 +2,6 @@
 html_document:
 title: "Visualize Airbnb Rentals 
         in New York City and Los Angeles "
-student: Yang  Gao 
-         Haobo Ma   
-         Xin   Liu 
 output: 
   html_notebook: 
     number_sections: false
