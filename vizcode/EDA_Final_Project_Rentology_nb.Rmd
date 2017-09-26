@@ -53,7 +53,7 @@ library(mi)
 ```
 ###Load Datasets
 ```{r, warning=FALSE,message=FALSE}
-#setwd("/Users/gaoyang/Desktop/final")
+#setwd("/Users/.../Desktop/final")
 list0317_ny <- read.csv("listings-raw0317nyc.csv",
                      header = TRUE)
 list0317_la <- read.csv("listings-raw0317la.csv",
