@@ -2,9 +2,9 @@
 html_document:
 title: "Visualize Airbnb Rentals 
         in New York City and Los Angeles "
-student: Yang  Gao (yg2499)
-         Haobo Ma  (hm2690)  
-         Xin   Liu (xl2622) 
+student: Yang  Gao 
+         Haobo Ma   
+         Xin   Liu 
 output: 
   html_notebook: 
     number_sections: false
@@ -17,7 +17,7 @@ output:
 #### Group Name: Rentology
 #### Project Title: Airbnb Data Visualization in New York City and Los Angeles
 #### Student Name:
-Yang Gao (yg2499), Haobo Ma (hm2690), Xin Liu (xl2622) 
+Yang Gao , Haobo Ma , Xin Liu  
 
 ##Introduction
 
